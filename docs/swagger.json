@@ -1,0 +1,858 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Delcom Blog API",
+    "description": "REST API platform blog multi-tier dengan AI Blog Generator terintegrasi Search Engine. Format respons: {status, message, data?}. Autentikasi: Authorization: Bearer <token>.",
+    "version": "1.0"
+  },
+  "host": "localhost:8081",
+  "basePath": "/",
+  "schemes": [
+    "http"
+  ],
+  "securityDefinitions": {
+    "BearerAuth": {
+      "type": "apiKey",
+      "name": "Authorization",
+      "in": "header",
+      "description": "Format: Bearer <token>"
+    }
+  },
+  "paths": {
+    "/api.json": {
+      "get": {
+        "tags": [
+          "Docs"
+        ],
+        "summary": "Spesifikasi OpenAPI JSON",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          },
+          "400": {
+            "description": "Permintaan tidak valid"
+          },
+          "401": {
+            "description": "Tidak terautentikasi"
+          },
+          "404": {
+            "description": "Tidak ditemukan"
+          },
+          "500": {
+            "description": "Kesalahan server"
+          }
+        }
+      }
+    },
+    "/api/public/categories": {
+      "get": {
+        "tags": [
+          "Public"
+        ],
+        "summary": "Daftar kategori artikel",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          },
+          "400": {
+            "description": "Permintaan tidak valid"
+          },
+          "401": {
+            "description": "Tidak terautentikasi"
+          },
+          "404": {
+            "description": "Tidak ditemukan"
+          },
+          "500": {
+            "description": "Kesalahan server"
+          }
+        }
+      }
+    },
+    "/api/public/posts": {
+      "get": {
+        "tags": [
+          "Public"
+        ],
+        "summary": "Daftar artikel terbit (?q=&category=)",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          },
+          "400": {
+            "description": "Permintaan tidak valid"
+          },
+          "401": {
+            "description": "Tidak terautentikasi"
+          },
+          "404": {
+            "description": "Tidak ditemukan"
+          },
+          "500": {
+            "description": "Kesalahan server"
+          }
+        },
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "type": "string"
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    "/api/public/posts/{slug}": {
+      "get": {
+        "tags": [
+          "Public"
+        ],
+        "summary": "Detail artikel terbit berdasarkan slug",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          },
+          "400": {
+            "description": "Permintaan tidak valid"
+          },
+          "401": {
+            "description": "Tidak terautentikasi"
+          },
+          "404": {
+            "description": "Tidak ditemukan"
+          },
+          "500": {
+            "description": "Kesalahan server"
+          }
+        },
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ]
+      }
+    },
+    "/api/auth/register": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Registrasi penulis baru",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "201": {
+            "description": "Dibuat"
+          },
+          "400": {
+            "description": "Tidak valid"
+          },
+          "409": {
+            "description": "Username/email sudah dipakai"
+          }
+        },
+        "consumes": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/RegisterRequest"
+            }
+          }
+        ]
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Login dan penerbitan JWT",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          },
+          "400": {
+            "description": "Permintaan tidak valid"
+          },
+          "401": {
+            "description": "Tidak terautentikasi"
+          },
+          "404": {
+            "description": "Tidak ditemukan"
+          },
+          "500": {
+            "description": "Kesalahan server"
+          }
+        },
+        "consumes": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/LoginRequest"
+            }
+          }
+        ]
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Logout",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          },
+          "400": {
+            "description": "Permintaan tidak valid"
+          },
+          "401": {
+            "description": "Tidak terautentikasi"
+          },
+          "404": {
+            "description": "Tidak ditemukan"
+          },
+          "500": {
+            "description": "Kesalahan server"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/auth/profile": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Profil pengguna login",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          },
+          "400": {
+            "description": "Permintaan tidak valid"
+          },
+          "401": {
+            "description": "Tidak terautentikasi"
+          },
+          "404": {
+            "description": "Tidak ditemukan"
+          },
+          "500": {
+            "description": "Kesalahan server"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Perbarui profil",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          },
+          "400": {
+            "description": "Permintaan tidak valid"
+          },
+          "401": {
+            "description": "Tidak terautentikasi"
+          },
+          "404": {
+            "description": "Tidak ditemukan"
+          },
+          "500": {
+            "description": "Kesalahan server"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "consumes": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UpdateProfileRequest"
+            }
+          }
+        ]
+      }
+    },
+    "/api/posts": {
+      "get": {
+        "tags": [
+          "Author"
+        ],
+        "summary": "Artikel milik penulis (terbit & draf)",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          },
+          "400": {
+            "description": "Permintaan tidak valid"
+          },
+          "401": {
+            "description": "Tidak terautentikasi"
+          },
+          "404": {
+            "description": "Tidak ditemukan"
+          },
+          "500": {
+            "description": "Kesalahan server"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Author"
+        ],
+        "summary": "Buat artikel baru",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "201": {
+            "description": "Dibuat"
+          },
+          "400": {
+            "description": "Tidak valid"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "consumes": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/PostRequest"
+            }
+          }
+        ]
+      }
+    },
+    "/api/posts/stats": {
+      "get": {
+        "tags": [
+          "Author"
+        ],
+        "summary": "Ringkasan 3 kartu statistik",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          },
+          "400": {
+            "description": "Permintaan tidak valid"
+          },
+          "401": {
+            "description": "Tidak terautentikasi"
+          },
+          "404": {
+            "description": "Tidak ditemukan"
+          },
+          "500": {
+            "description": "Kesalahan server"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/posts/ai-generate": {
+      "post": {
+        "tags": [
+          "Author"
+        ],
+        "summary": "Generate draf artikel dengan AI + Search Engine",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          },
+          "400": {
+            "description": "Tidak valid"
+          },
+          "502": {
+            "description": "AI/Search Engine gagal"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "consumes": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/GenerateRequest"
+            }
+          }
+        ]
+      }
+    },
+    "/api/posts/{id}": {
+      "get": {
+        "tags": [
+          "Author"
+        ],
+        "summary": "Detail artikel milik penulis",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          },
+          "400": {
+            "description": "Permintaan tidak valid"
+          },
+          "401": {
+            "description": "Tidak terautentikasi"
+          },
+          "404": {
+            "description": "Tidak ditemukan"
+          },
+          "500": {
+            "description": "Kesalahan server"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "integer"
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Author"
+        ],
+        "summary": "Perbarui artikel",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          },
+          "400": {
+            "description": "Permintaan tidak valid"
+          },
+          "401": {
+            "description": "Tidak terautentikasi"
+          },
+          "404": {
+            "description": "Tidak ditemukan"
+          },
+          "500": {
+            "description": "Kesalahan server"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "consumes": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/PostRequest"
+            }
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Author"
+        ],
+        "summary": "Hapus artikel",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          },
+          "400": {
+            "description": "Permintaan tidak valid"
+          },
+          "401": {
+            "description": "Tidak terautentikasi"
+          },
+          "404": {
+            "description": "Tidak ditemukan"
+          },
+          "500": {
+            "description": "Kesalahan server"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "integer"
+          }
+        ]
+      }
+    },
+    "/api/posts/{id}/toggle-publish": {
+      "patch": {
+        "tags": [
+          "Author"
+        ],
+        "summary": "Toggle Draf <-> Terbit",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          },
+          "400": {
+            "description": "Permintaan tidak valid"
+          },
+          "401": {
+            "description": "Tidak terautentikasi"
+          },
+          "404": {
+            "description": "Tidak ditemukan"
+          },
+          "500": {
+            "description": "Kesalahan server"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "integer"
+          }
+        ]
+      }
+    },
+    "/api/admin/users": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Seluruh pengguna + total artikel",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          },
+          "401": {
+            "description": "Tidak terautentikasi"
+          },
+          "403": {
+            "description": "Bukan admin"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/admin/posts": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Arsip seluruh artikel",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          },
+          "400": {
+            "description": "Permintaan tidak valid"
+          },
+          "401": {
+            "description": "Tidak terautentikasi"
+          },
+          "404": {
+            "description": "Tidak ditemukan"
+          },
+          "500": {
+            "description": "Kesalahan server"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/admin/users/{id}/posts": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Artikel milik pengguna tertentu",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          },
+          "400": {
+            "description": "Permintaan tidak valid"
+          },
+          "401": {
+            "description": "Tidak terautentikasi"
+          },
+          "404": {
+            "description": "Tidak ditemukan"
+          },
+          "500": {
+            "description": "Kesalahan server"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "integer"
+          }
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "RegisterRequest": {
+      "type": "object",
+      "required": [
+        "username",
+        "email",
+        "password"
+      ],
+      "properties": {
+        "username": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        }
+      }
+    },
+    "LoginRequest": {
+      "type": "object",
+      "required": [
+        "username",
+        "password"
+      ],
+      "properties": {
+        "username": {
+          "type": "string",
+          "description": "username atau email"
+        },
+        "password": {
+          "type": "string"
+        }
+      }
+    },
+    "UpdateProfileRequest": {
+      "type": "object",
+      "properties": {
+        "username": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        }
+      }
+    },
+    "PostRequest": {
+      "type": "object",
+      "required": [
+        "title",
+        "content"
+      ],
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "Teknologi",
+            "Pendidikan",
+            "Gaya Hidup",
+            "Bisnis",
+            "Opini",
+            "Umum"
+          ]
+        },
+        "excerpt": {
+          "type": "string"
+        },
+        "content": {
+          "type": "string",
+          "description": "Markdown"
+        },
+        "cover_image_path": {
+          "type": "string"
+        },
+        "is_published": {
+          "type": "boolean"
+        }
+      }
+    },
+    "GenerateRequest": {
+      "type": "object",
+      "required": [
+        "topic"
+      ],
+      "properties": {
+        "topic": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string"
+        },
+        "include_web_search": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

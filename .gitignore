@@ -1,0 +1,10 @@
+# Binary (diawali slash agar hanya mengabaikan root, bukan internal/server/)
+/server
+/main
+/app
+/server.exe
+
+.env
+*.test
+*.out
+coverage.*
