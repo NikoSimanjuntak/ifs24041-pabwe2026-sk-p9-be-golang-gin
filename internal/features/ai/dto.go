@@ -21,4 +21,6 @@ type GenerateResponse struct {
 	Excerpt  string   `json:"excerpt"`
 	Content  string   `json:"content"`
 	Sources  []Source `json:"sources"`
+	// SearchWarning terisi bila penelusuran diminta tetapi gagal (artikel tetap dibuat tanpa sumber).
+	SearchWarning string `json:"search_warning,omitempty"`
 }

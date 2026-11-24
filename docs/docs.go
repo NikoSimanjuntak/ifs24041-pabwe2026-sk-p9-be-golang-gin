@@ -15,9 +15,7 @@ var APIJSON string
 // SwaggerInfo mendaftarkan dokumen ke registri swag dengan nama instance "swagger".
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
-	Host:             "localhost:8081",
 	BasePath:         "/",
-	Schemes:          []string{"http"},
 	Title:            "Delcom Blog API",
 	Description:      "REST API Delcom Blog",
 	InfoInstanceName: "swagger",

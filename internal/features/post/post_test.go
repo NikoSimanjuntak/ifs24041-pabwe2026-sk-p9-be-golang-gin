@@ -167,6 +167,7 @@ func TestPublicEndpoints(t *testing.T) {
 	require.Equal(t, 200, w.Code)
 	author := data(t, w)["author"].(map[string]any)
 	assert.Equal(t, "ani", author["username"])
+	assert.Equal(t, "ani", data(t, w)["author_name"])
 	assert.NotContains(t, w.Body.String(), "ani@m.com")
 	assert.NotContains(t, w.Body.String(), "user_id")
 

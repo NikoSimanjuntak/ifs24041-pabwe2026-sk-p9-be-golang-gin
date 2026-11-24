@@ -42,6 +42,7 @@ type PostResponse struct {
 	UpdatedAt      time.Time   `json:"updated_at"`
 	ReadingTime    int         `json:"reading_time"`
 	Author         *AuthorInfo `json:"author,omitempty"`
+	AuthorName     string      `json:"author_name,omitempty"`
 }
 
 // Stats adalah ringkasan 3 kartu statistik penulis.
@@ -74,6 +75,7 @@ func toResponse(p database.Post) PostResponse {
 	}
 	if p.User.ID != 0 {
 		r.Author = &AuthorInfo{ID: p.User.ID, Username: p.User.Username}
+		r.AuthorName = p.User.Username
 	}
 	return r
 }
@@ -91,6 +93,7 @@ func toPublic(p database.Post) PostResponse {
 	r := toResponse(p)
 	r.UserID = 0
 	r.Author = &AuthorInfo{Username: p.User.Username}
+	r.AuthorName = p.User.Username
 	return r
 }
 

@@ -70,12 +70,15 @@ func (s *Service) Generate(ctx context.Context, req GenerateRequest) (*GenerateR
 	}
 
 	sources := []Source{}
+	warning := ""
 	if req.IncludeWebSearch {
 		found, err := s.search.Search(ctx, req.Topic)
 		if err != nil {
-			return nil, fmt.Errorf("penelusuran search engine gagal: %w", err)
+			// Search Engine bersifat pelengkap: artikel tetap dibuat tanpa sumber rujukan.
+			warning = "penelusuran search engine gagal: " + err.Error()
+		} else {
+			sources = found
 		}
-		sources = found
 	}
 
 	raw, err := s.chat.Complete(ctx, systemPrompt, buildPrompt(req.Topic, category, sources))
@@ -104,5 +107,7 @@ func (s *Service) Generate(ctx context.Context, req GenerateRequest) (*GenerateR
 		Excerpt:  strings.TrimSpace(out.Excerpt),
 		Content:  out.Content,
 		Sources:  sources,
+
+		SearchWarning: warning,
 	}, nil
 }

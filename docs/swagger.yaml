@@ -5,11 +5,7 @@
     "description": "REST API platform blog multi-tier dengan AI Blog Generator terintegrasi Search Engine. Format respons: {status, message, data?}. Autentikasi: Authorization: Bearer <token>.",
     "version": "1.0"
   },
-  "host": "localhost:8081",
   "basePath": "/",
-  "schemes": [
-    "http"
-  ],
   "securityDefinitions": {
     "BearerAuth": {
       "type": "apiKey",

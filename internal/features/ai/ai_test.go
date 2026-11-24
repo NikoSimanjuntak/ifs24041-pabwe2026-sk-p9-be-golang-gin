@@ -185,9 +185,6 @@ func TestGenerateErrors(t *testing.T) {
 	_, err := NewService(&fakeSearch{}, &fakeChat{}).Generate(ctx, GenerateRequest{Topic: "x", Category: "Olahraga"})
 	assert.ErrorIs(t, err, ErrInvalidCategory)
 
-	_, err = NewService(&fakeSearch{err: errors.New("down")}, &fakeChat{}).Generate(ctx, GenerateRequest{Topic: "x", IncludeWebSearch: true})
-	assert.ErrorContains(t, err, "penelusuran")
-
 	_, err = NewService(&fakeSearch{}, &fakeChat{err: errors.New("down")}).Generate(ctx, GenerateRequest{Topic: "x"})
 	assert.ErrorContains(t, err, "pemanggilan AI")
 
@@ -195,6 +192,15 @@ func TestGenerateErrors(t *testing.T) {
 		_, err = NewService(&fakeSearch{}, &fakeChat{out: bad}).Generate(ctx, GenerateRequest{Topic: "x"})
 		assert.ErrorIs(t, err, ErrBadOutput, bad)
 	}
+}
+
+func TestGenerateSearchFailureDoesNotBlock(t *testing.T) {
+	c := &fakeChat{out: goodJSON}
+	res, err := NewService(&fakeSearch{err: errors.New("down")}, c).Generate(context.Background(), GenerateRequest{Topic: "x", IncludeWebSearch: true})
+	require.NoError(t, err)
+	assert.Empty(t, res.Sources)
+	assert.Contains(t, res.SearchWarning, "down")
+	assert.NotContains(t, c.prompt, "## Sumber")
 }
 
 func TestExtractJSON(t *testing.T) {
