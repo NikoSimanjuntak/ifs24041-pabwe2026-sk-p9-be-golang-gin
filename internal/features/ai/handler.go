@@ -16,7 +16,7 @@ func NewHandler(svc *Service) *Handler { return &Handler{svc: svc} }
 func (h *Handler) Generate(c *gin.Context) {
 	var req GenerateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Fail(c, http.StatusBadRequest, "Topik artikel wajib diisi (maks. 300 karakter)")
+		response.Fail(c, http.StatusBadRequest, "Field topic wajib diisi (topik artikel, maks. 300 karakter)")
 		return
 	}
 	res, err := h.svc.Generate(c.Request.Context(), req)

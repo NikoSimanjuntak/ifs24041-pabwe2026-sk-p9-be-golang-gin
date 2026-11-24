@@ -20,6 +20,8 @@ func fail(c *gin.Context, err error) {
 	switch {
 	case errors.Is(err, ErrNotFound):
 		response.Fail(c, http.StatusNotFound, err.Error())
+	case errors.Is(err, ErrForbidden):
+		response.Fail(c, http.StatusForbidden, err.Error())
 	case errors.Is(err, ErrInvalidCategory):
 		response.Fail(c, http.StatusBadRequest, err.Error())
 	default:
@@ -28,7 +30,11 @@ func fail(c *gin.Context, err error) {
 }
 
 func parseID(c *gin.Context) (uint, bool) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	id, err := strconv.ParseUint(c.Param("id"), 10, 63)
+	if errors.Is(err, strconv.ErrRange) { // angka terlalu besar: pasti tidak ada
+		response.Fail(c, http.StatusNotFound, ErrNotFound.Error())
+		return 0, false
+	}
 	if err != nil {
 		response.Fail(c, http.StatusBadRequest, "ID tidak valid")
 		return 0, false
@@ -113,6 +119,11 @@ func (h *Handler) Update(c *gin.Context) {
 	if !ok {
 		return
 	}
+	// Kepemilikan diperiksa sebelum validasi body: ID tidak ada -> 404, milik orang lain -> 403.
+	if _, err := h.svc.GetMine(id, uid(c)); err != nil {
+		fail(c, err)
+		return
+	}
 	var req PostRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.Fail(c, http.StatusBadRequest, "Data artikel tidak valid: "+err.Error())
@@ -176,7 +187,7 @@ func (h *Handler) AdminUserPosts(c *gin.Context) {
 	if !ok {
 		return
 	}
-	posts, err := h.svc.AdminUserPosts(id)
+	posts, err := h.svc.ListMine(id) // user tidak ada -> daftar kosong
 	if err != nil {
 		fail(c, err)
 		return

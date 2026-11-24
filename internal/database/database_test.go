@@ -1,11 +1,14 @@
 package database
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 func TestMigrate(t *testing.T) {
@@ -33,7 +36,20 @@ func TestSeed(t *testing.T) {
 	assert.NotEqual(t, "admin", users[0].Password)
 }
 
-func TestSeedCountError(t *testing.T) {
+func TestSeedPromotesAndSyncsExistingUser(t *testing.T) {
+	db := OpenSQLiteMemory()
+	require.NoError(t, Migrate(db))
+	require.NoError(t, db.Create(&User{Username: "admin", Email: "a@x.com", Password: "lama", Role: RoleMember}).Error)
+
+	require.NoError(t, Seed(db, "admin", "rahasia-baru"))
+
+	var u User
+	require.NoError(t, db.Where("username = ?", "admin").First(&u).Error)
+	assert.Equal(t, RoleAdmin, u.Role)
+	assert.NoError(t, bcrypt.CompareHashAndPassword([]byte(u.Password), []byte("rahasia-baru")))
+}
+
+func TestSeedQueryError(t *testing.T) {
 	db := OpenSQLiteMemory() // tanpa migrasi -> tabel tidak ada
 	assert.Error(t, Seed(db, "admin", "admin"))
 }
@@ -42,6 +58,16 @@ func TestSeedHashError(t *testing.T) {
 	db := OpenSQLiteMemory()
 	require.NoError(t, Migrate(db))
 	assert.Error(t, Seed(db, "admin", strings.Repeat("x", 100)))
+}
+
+func TestSeedSaveError(t *testing.T) {
+	db := OpenSQLiteMemory()
+	require.NoError(t, Migrate(db))
+	require.NoError(t, Seed(db, "admin", "admin"))
+	_ = db.Callback().Update().Before("gorm:update").Register("fail", func(tx *gorm.DB) {
+		_ = tx.AddError(errors.New("boom"))
+	})
+	assert.Error(t, Seed(db, "admin", "admin"))
 }
 
 func TestIsValidCategory(t *testing.T) {

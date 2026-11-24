@@ -17,7 +17,7 @@ func NewHandler(svc *Service) *Handler { return &Handler{svc: svc} }
 func fail(c *gin.Context, err error) {
 	switch {
 	case errors.Is(err, ErrConflict):
-		response.Fail(c, http.StatusConflict, err.Error())
+		response.Fail(c, http.StatusBadRequest, err.Error())
 	case errors.Is(err, ErrInvalidCredentials):
 		response.Fail(c, http.StatusUnauthorized, err.Error())
 	case errors.Is(err, ErrNotFound):
@@ -33,12 +33,12 @@ func (h *Handler) Register(c *gin.Context) {
 		response.Fail(c, http.StatusBadRequest, "Data registrasi tidak valid: "+err.Error())
 		return
 	}
-	user, err := h.svc.Register(req)
+	res, err := h.svc.Register(req)
 	if err != nil {
 		fail(c, err)
 		return
 	}
-	response.Success(c, http.StatusCreated, "Registrasi berhasil", user)
+	response.Success(c, http.StatusCreated, "Registrasi berhasil", res)
 }
 
 func (h *Handler) Login(c *gin.Context) {

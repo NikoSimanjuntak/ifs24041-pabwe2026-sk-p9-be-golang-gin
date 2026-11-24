@@ -29,9 +29,9 @@ func (r *Repository) SlugExists(slug string) (bool, error) {
 	return n > 0, err
 }
 
-func (r *Repository) FindByIDAndUser(id, userID uint) (*database.Post, error) {
+func (r *Repository) FindByID(id uint) (*database.Post, error) {
 	var p database.Post
-	if err := r.db.Preload("User").Where("id = ? AND user_id = ?", id, userID).First(&p).Error; err != nil {
+	if err := r.db.Preload("User").First(&p, id).Error; err != nil {
 		return nil, err
 	}
 	return &p, nil
@@ -79,12 +79,6 @@ func (r *Repository) CountByUser(userID uint) (total, published int64, err error
 		Where("user_id = ?", userID).
 		Scan(&row).Error
 	return row.Total, row.Published, err
-}
-
-func (r *Repository) UserExists(id uint) (bool, error) {
-	var n int64
-	err := r.db.Model(&database.User{}).Where("id = ?", id).Count(&n).Error
-	return n > 0, err
 }
 
 func (r *Repository) UsersWithCounts() ([]AdminUser, error) {

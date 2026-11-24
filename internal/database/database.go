@@ -1,6 +1,7 @@
 package database
 
 import (
+	"errors"
 	"time"
 
 	"github.com/glebarez/sqlite"
@@ -79,23 +80,27 @@ func Migrate(db *gorm.DB) error {
 	return db.AutoMigrate(&User{}, &Post{})
 }
 
-// Seed membuat akun admin bila belum ada.
+// Seed memastikan akun admin sesuai konfigurasi env: dibuat bila belum ada,
+// bila sudah ada maka role dijadikan admin dan password disamakan dengan env.
 func Seed(db *gorm.DB, username, password string) error {
-	var n int64
-	if err := db.Model(&User{}).Where("username = ?", username).Count(&n).Error; err != nil {
-		return err
-	}
-	if n > 0 {
-		return nil
-	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return err
 	}
-	return db.Create(&User{
-		Username: username,
-		Email:    username + "@delcom.local",
-		Password: string(hash),
-		Role:     RoleAdmin,
-	}).Error
+	var u User
+	err = db.Where("username = ?", username).First(&u).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return db.Create(&User{
+			Username: username,
+			Email:    username + "@delcom.local",
+			Password: string(hash),
+			Role:     RoleAdmin,
+		}).Error
+	}
+	if err != nil {
+		return err
+	}
+	u.Password = string(hash)
+	u.Role = RoleAdmin
+	return db.Save(&u).Error
 }

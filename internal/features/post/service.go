@@ -14,6 +14,7 @@ import (
 var (
 	ErrNotFound        = errors.New("data tidak ditemukan")
 	ErrInvalidCategory = errors.New("kategori tidak valid")
+	ErrForbidden       = errors.New("anda tidak berhak mengakses artikel ini")
 )
 
 const wordsPerMinute = 200
@@ -80,6 +81,18 @@ func setPublished(p *database.Post, publish bool) {
 
 type Service struct{ repo *Repository }
 
+// owned mengambil artikel dan memastikan milik userID: 404 bila tidak ada, 403 bila milik orang lain.
+func (s *Service) owned(id, userID uint) (*database.Post, error) {
+	p, err := s.repo.FindByID(id)
+	if err != nil {
+		return nil, mapErr(err)
+	}
+	if p.UserID != userID {
+		return nil, ErrForbidden
+	}
+	return p, nil
+}
+
 func NewService(repo *Repository) *Service { return &Service{repo: repo} }
 
 func (s *Service) uniqueSlug(title string) (string, error) {
@@ -119,13 +132,13 @@ func (s *Service) Create(userID uint, req PostRequest) (*PostResponse, error) {
 }
 
 func (s *Service) Update(id, userID uint, req PostRequest) (*PostResponse, error) {
-	category, err := normalizeCategory(req.Category)
+	p, err := s.owned(id, userID)
 	if err != nil {
 		return nil, err
 	}
-	p, err := s.repo.FindByIDAndUser(id, userID)
+	category, err := normalizeCategory(req.Category)
 	if err != nil {
-		return nil, mapErr(err)
+		return nil, err
 	}
 	p.Title = strings.TrimSpace(req.Title)
 	p.Category = category
@@ -143,9 +156,9 @@ func (s *Service) Update(id, userID uint, req PostRequest) (*PostResponse, error
 }
 
 func (s *Service) TogglePublish(id, userID uint) (*PostResponse, error) {
-	p, err := s.repo.FindByIDAndUser(id, userID)
+	p, err := s.owned(id, userID)
 	if err != nil {
-		return nil, mapErr(err)
+		return nil, err
 	}
 	setPublished(p, !p.IsPublished)
 	if err := s.repo.Save(p); err != nil {
@@ -156,17 +169,17 @@ func (s *Service) TogglePublish(id, userID uint) (*PostResponse, error) {
 }
 
 func (s *Service) Delete(id, userID uint) error {
-	p, err := s.repo.FindByIDAndUser(id, userID)
+	p, err := s.owned(id, userID)
 	if err != nil {
-		return mapErr(err)
+		return err
 	}
 	return s.repo.Delete(p)
 }
 
 func (s *Service) GetMine(id, userID uint) (*PostResponse, error) {
-	p, err := s.repo.FindByIDAndUser(id, userID)
+	p, err := s.owned(id, userID)
 	if err != nil {
-		return nil, mapErr(err)
+		return nil, err
 	}
 	res := toResponse(*p)
 	return &res, nil
@@ -193,7 +206,7 @@ func (s *Service) ListPublic(f ListFilter) ([]PostResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-	return toResponses(posts), nil
+	return toPublicResponses(posts), nil
 }
 
 func (s *Service) GetPublic(slug string) (*PostResponse, error) {
@@ -201,11 +214,18 @@ func (s *Service) GetPublic(slug string) (*PostResponse, error) {
 	if err != nil {
 		return nil, mapErr(err)
 	}
-	res := toResponse(*p)
+	res := toPublic(*p)
 	return &res, nil
 }
 
-func (s *Service) AdminUsers() ([]AdminUser, error) { return s.repo.UsersWithCounts() }
+func (s *Service) AdminUsers() ([]AdminUser, error) {
+	users, err := s.repo.UsersWithCounts()
+	for i := range users {
+		users[i].TotalArticles = users[i].TotalPosts
+		users[i].TotalSelesai = users[i].TotalPublished
+	}
+	return users, err
+}
 
 func (s *Service) AdminPosts() ([]PostResponse, error) {
 	posts, err := s.repo.ListAll()
@@ -213,15 +233,4 @@ func (s *Service) AdminPosts() ([]PostResponse, error) {
 		return nil, err
 	}
 	return toResponses(posts), nil
-}
-
-func (s *Service) AdminUserPosts(userID uint) ([]PostResponse, error) {
-	exists, err := s.repo.UserExists(userID)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, ErrNotFound
-	}
-	return s.ListMine(userID)
 }

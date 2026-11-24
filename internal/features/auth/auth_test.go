@@ -85,6 +85,11 @@ func failQueryNth(db *gorm.DB, nth int) {
 func registerAndLogin(t *testing.T, r *gin.Engine) string {
 	w := do(r, "POST", "/register", RegisterRequest{Username: "budi", Email: "budi@mail.com", Password: "rahasia1"}, "")
 	require.Equal(t, 201, w.Code)
+	var reg struct {
+		Data AuthResponse `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &reg))
+	require.Equal(t, 3, len(strings.Split(reg.Data.Token, "."))) // JWT
 	w = do(r, "POST", "/login", LoginRequest{Username: "budi", Password: "rahasia1"}, "")
 	require.Equal(t, 200, w.Code)
 	var body struct {
@@ -124,8 +129,8 @@ func TestRegisterErrors(t *testing.T) {
 
 	assert.Equal(t, 400, do(r, "POST", "/register", "{bukan json", "").Code)
 	assert.Equal(t, 400, do(r, "POST", "/register", RegisterRequest{Username: "x", Email: "salah", Password: "1"}, "").Code)
-	assert.Equal(t, 409, do(r, "POST", "/register", RegisterRequest{Username: "budi", Email: "lain@mail.com", Password: "rahasia1"}, "").Code)
-	assert.Equal(t, 409, do(r, "POST", "/register", RegisterRequest{Username: "lain", Email: "budi@mail.com", Password: "rahasia1"}, "").Code)
+	assert.Equal(t, 400, do(r, "POST", "/register", RegisterRequest{Username: "budi", Email: "lain@mail.com", Password: "rahasia1"}, "").Code)
+	assert.Equal(t, 400, do(r, "POST", "/register", RegisterRequest{Username: "lain", Email: "budi@mail.com", Password: "rahasia1"}, "").Code)
 
 	failOn(db, "create")
 	assert.Equal(t, 500, do(r, "POST", "/register", RegisterRequest{Username: "baru", Email: "baru@mail.com", Password: "rahasia1"}, "").Code)
@@ -169,7 +174,7 @@ func TestProfileErrors(t *testing.T) {
 
 	// username milik pengguna lain
 	require.Equal(t, 201, do(r, "POST", "/register", RegisterRequest{Username: "sari", Email: "sari@mail.com", Password: "rahasia1"}, "").Code)
-	assert.Equal(t, 409, do(r, "PUT", "/profile", UpdateProfileRequest{Username: "sari"}, token).Code)
+	assert.Equal(t, 400, do(r, "PUT", "/profile", UpdateProfileRequest{Username: "sari"}, token).Code)
 
 	// password terlalu panjang untuk bcrypt (dilewatkan langsung ke service)
 	_, err := svc.UpdateProfile(1, UpdateProfileRequest{Password: strings.Repeat("x", 100)})

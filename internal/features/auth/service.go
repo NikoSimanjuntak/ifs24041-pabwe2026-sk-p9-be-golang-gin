@@ -27,7 +27,7 @@ func NewService(repo *Repository, secret string, ttl time.Duration) *Service {
 	return &Service{repo: repo, secret: secret, ttl: ttl}
 }
 
-func (s *Service) Register(req RegisterRequest) (*UserResponse, error) {
+func (s *Service) Register(req RegisterRequest) (*AuthResponse, error) {
 	taken, err := s.repo.Taken(req.Username, req.Email, 0)
 	if err != nil {
 		return nil, err
@@ -43,8 +43,10 @@ func (s *Service) Register(req RegisterRequest) (*UserResponse, error) {
 	if err := s.repo.Create(u); err != nil {
 		return nil, err
 	}
-	res := toUser(u)
-	return &res, nil
+	return &AuthResponse{
+		Token: middleware.GenerateToken(s.secret, u.ID, u.Role, s.ttl),
+		User:  toUser(u),
+	}, nil
 }
 
 func (s *Service) Login(req LoginRequest) (*AuthResponse, error) {

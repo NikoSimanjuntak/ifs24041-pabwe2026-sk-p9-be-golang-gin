@@ -122,7 +122,7 @@ func TestEndToEnd(t *testing.T) {
 	assert.Len(t, b["data"], 1)
 
 	w, b = call(r, "GET", "/api/posts/stats", token, nil)
-	assert.EqualValues(t, 1, b["data"].(map[string]any)["total_published"])
+	assert.EqualValues(t, 1, b["data"].(map[string]any)["total_selesai"])
 
 	w, _ = call(r, "PATCH", "/api/posts/1/toggle-publish", token, nil)
 	assert.Equal(t, 200, w.Code)

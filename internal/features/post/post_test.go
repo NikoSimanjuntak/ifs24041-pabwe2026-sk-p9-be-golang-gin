@@ -100,16 +100,6 @@ func failOp(db *gorm.DB, op string) {
 	}
 }
 
-func failQueryNth(db *gorm.DB, nth int) {
-	n := 0
-	_ = db.Callback().Query().Before("gorm:query").Register("failnth", func(tx *gorm.DB) {
-		n++
-		if n == nth {
-			_ = tx.AddError(errors.New("boom"))
-		}
-	})
-}
-
 func TestSlugify(t *testing.T) {
 	cases := map[string]string{
 		"Halo Dunia!":          "halo-dunia",
@@ -166,6 +156,7 @@ func TestPublicEndpoints(t *testing.T) {
 	do(r, "POST", "/posts", PostRequest{Title: "Draf Rahasia", Content: "isi"}, 1)
 
 	assert.Len(t, list(t, do(r, "GET", "/public/posts", nil, 0)), 2)
+	assert.NotContains(t, do(r, "GET", "/public/posts", nil, 0).Body.String(), "user_id")
 	assert.Len(t, list(t, do(r, "GET", "/public/posts?q=GOLANG", nil, 0)), 1)
 	assert.Len(t, list(t, do(r, "GET", "/public/posts?q=ventura", nil, 0)), 1)
 	assert.Len(t, list(t, do(r, "GET", "/public/posts?category=Bisnis", nil, 0)), 1)
@@ -177,6 +168,7 @@ func TestPublicEndpoints(t *testing.T) {
 	author := data(t, w)["author"].(map[string]any)
 	assert.Equal(t, "ani", author["username"])
 	assert.NotContains(t, w.Body.String(), "ani@m.com")
+	assert.NotContains(t, w.Body.String(), "user_id")
 
 	assert.Equal(t, 404, do(r, "GET", "/public/posts/draf-rahasia", nil, 0).Code)
 	assert.Equal(t, 404, do(r, "GET", "/public/posts/tidak-ada", nil, 0).Code)
@@ -191,12 +183,14 @@ func TestAuthorCRUD(t *testing.T) {
 	assert.Len(t, list(t, do(r, "GET", "/posts", nil, 1)), 2)
 
 	d := data(t, do(r, "GET", "/posts/stats", nil, 1))
-	assert.EqualValues(t, 2, d["total_posts"])
-	assert.EqualValues(t, 1, d["total_published"])
-	assert.EqualValues(t, 1, d["total_draft"])
+	assert.EqualValues(t, 2, d["total_articles"])
+	assert.EqualValues(t, 1, d["total_selesai"])
+	assert.EqualValues(t, 1, d["belum_selesai"])
 
 	assert.Equal(t, 200, do(r, "GET", "/posts/2", nil, 1).Code)
-	assert.Equal(t, 404, do(r, "GET", "/posts/3", nil, 1).Code) // milik user lain
+	assert.Equal(t, 403, do(r, "GET", "/posts/3", nil, 1).Code) // milik user lain
+	assert.Equal(t, 404, do(r, "GET", "/posts/999", nil, 1).Code)
+	assert.Equal(t, 404, do(r, "GET", "/posts/99999999999999999999", nil, 1).Code) // terlalu besar
 	assert.Equal(t, 400, do(r, "GET", "/posts/abc", nil, 1).Code)
 
 	// update: is_published nil = tidak berubah
@@ -214,7 +208,11 @@ func TestAuthorCRUD(t *testing.T) {
 	assert.Equal(t, 400, do(r, "PUT", "/posts/2", PostRequest{Title: "x", Content: "y", Category: "Olahraga"}, 1).Code)
 	assert.Equal(t, 400, do(r, "PUT", "/posts/2", "{bukan json", 1).Code)
 	assert.Equal(t, 400, do(r, "PUT", "/posts/abc", PostRequest{Title: "x", Content: "y"}, 1).Code)
-	assert.Equal(t, 404, do(r, "PUT", "/posts/3", PostRequest{Title: "x", Content: "y"}, 1).Code)
+	assert.Equal(t, 403, do(r, "PUT", "/posts/3", PostRequest{Title: "x", Content: "y"}, 1).Code)
+	assert.Equal(t, 404, do(r, "PUT", "/posts/999", PostRequest{Title: "x", Content: "y"}, 1).Code)
+	// kepemilikan diperiksa sebelum validasi body
+	assert.Equal(t, 403, do(r, "PUT", "/posts/3", "{}", 1).Code)
+	assert.Equal(t, 404, do(r, "PUT", "/posts/999", "{}", 1).Code)
 
 	// toggle bolak-balik
 	d = data(t, do(r, "PATCH", "/posts/2/toggle-publish", nil, 1))
@@ -223,11 +221,13 @@ func TestAuthorCRUD(t *testing.T) {
 	d = data(t, do(r, "PATCH", "/posts/2/toggle-publish", nil, 1))
 	assert.Equal(t, true, d["is_published"])
 	assert.NotNil(t, d["published_at"])
-	assert.Equal(t, 404, do(r, "PATCH", "/posts/3/toggle-publish", nil, 1).Code)
+	assert.Equal(t, 403, do(r, "PATCH", "/posts/3/toggle-publish", nil, 1).Code)
+	assert.Equal(t, 404, do(r, "PATCH", "/posts/999/toggle-publish", nil, 1).Code)
 	assert.Equal(t, 400, do(r, "PATCH", "/posts/abc/toggle-publish", nil, 1).Code)
 
 	// hapus
-	assert.Equal(t, 404, do(r, "DELETE", "/posts/3", nil, 1).Code)
+	assert.Equal(t, 403, do(r, "DELETE", "/posts/3", nil, 1).Code)
+	assert.Equal(t, 404, do(r, "DELETE", "/posts/999", nil, 1).Code)
 	assert.Equal(t, 400, do(r, "DELETE", "/posts/abc", nil, 1).Code)
 	assert.Equal(t, 200, do(r, "DELETE", "/posts/2", nil, 1).Code)
 	assert.Equal(t, 404, do(r, "GET", "/posts/2", nil, 1).Code)
@@ -244,11 +244,14 @@ func TestAdmin(t *testing.T) {
 	assert.Equal(t, "ani", first["username"])
 	assert.EqualValues(t, 2, first["total_posts"])
 	assert.EqualValues(t, 1, first["total_published"])
+	assert.EqualValues(t, 2, first["total_articles"])
+	assert.EqualValues(t, 1, first["total_selesai"])
 	assert.NotContains(t, do(r, "GET", "/admin/users", nil, 2).Body.String(), "password")
 
 	assert.Len(t, list(t, do(r, "GET", "/admin/posts", nil, 2)), 2)
 	assert.Len(t, list(t, do(r, "GET", "/admin/users/1/posts", nil, 2)), 2)
-	assert.Equal(t, 404, do(r, "GET", "/admin/users/99/posts", nil, 2).Code)
+	assert.Equal(t, 200, do(r, "GET", "/admin/users/99/posts", nil, 2).Code) // user tidak ada -> daftar kosong
+	assert.Len(t, list(t, do(r, "GET", "/admin/users/99/posts", nil, 2)), 0)
 	assert.Equal(t, 400, do(r, "GET", "/admin/users/abc/posts", nil, 2).Code)
 }
 
@@ -290,10 +293,4 @@ func TestWriteFailures(t *testing.T) {
 
 	failOp(db, "delete")
 	assert.Equal(t, 500, do(r, "DELETE", "/posts/1", nil, 1).Code)
-}
-
-func TestAdminUserPostsSecondQueryFails(t *testing.T) {
-	db, r := setup(t)
-	failQueryNth(db, 2) // 1: UserExists, 2: ListByUser
-	assert.Equal(t, 500, do(r, "GET", "/admin/users/1/posts", nil, 2).Code)
 }

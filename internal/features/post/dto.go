@@ -23,13 +23,13 @@ type ListFilter struct {
 }
 
 type AuthorInfo struct {
-	ID       uint   `json:"id"`
+	ID       uint   `json:"id,omitempty"`
 	Username string `json:"username"`
 }
 
 type PostResponse struct {
 	ID             uint        `json:"id"`
-	UserID         uint        `json:"user_id"`
+	UserID         uint        `json:"user_id,omitempty"`
 	Title          string      `json:"title"`
 	Slug           string      `json:"slug"`
 	Category       string      `json:"category"`
@@ -44,10 +44,11 @@ type PostResponse struct {
 	Author         *AuthorInfo `json:"author,omitempty"`
 }
 
+// Stats adalah ringkasan 3 kartu statistik penulis.
 type Stats struct {
-	Total     int64 `json:"total_posts"`
-	Published int64 `json:"total_published"`
-	Draft     int64 `json:"total_draft"`
+	Total     int64 `json:"total_articles"`
+	Published int64 `json:"total_selesai"`
+	Draft     int64 `json:"belum_selesai"`
 }
 
 type AdminUser struct {
@@ -58,6 +59,9 @@ type AdminUser struct {
 	CreatedAt      time.Time `json:"created_at"`
 	TotalPosts     int64     `json:"total_posts"`
 	TotalPublished int64     `json:"total_published"`
+	// Alias nama field agar konsisten dengan statistik penulis (diisi di service).
+	TotalArticles int64 `json:"total_articles" gorm:"-"`
+	TotalSelesai  int64 `json:"total_selesai" gorm:"-"`
 }
 
 func toResponse(p database.Post) PostResponse {
@@ -78,6 +82,22 @@ func toResponses(posts []database.Post) []PostResponse {
 	out := make([]PostResponse, 0, len(posts))
 	for _, p := range posts {
 		out = append(out, toResponse(p))
+	}
+	return out
+}
+
+// toPublic membuat respons untuk pengunjung: tanpa user_id dan tanpa id internal penulis.
+func toPublic(p database.Post) PostResponse {
+	r := toResponse(p)
+	r.UserID = 0
+	r.Author = &AuthorInfo{Username: p.User.Username}
+	return r
+}
+
+func toPublicResponses(posts []database.Post) []PostResponse {
+	out := make([]PostResponse, 0, len(posts))
+	for _, p := range posts {
+		out = append(out, toPublic(p))
 	}
 	return out
 }
